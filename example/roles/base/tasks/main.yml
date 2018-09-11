@@ -1,0 +1,17 @@
+- when: ansible_os_family == 'Debian'
+  block:
+    - name: make sure locales package is installed
+      package:
+        name: locales
+        state: present
+    - name: make sure locale en_US.UTF-8 is present
+      locale_gen:
+        name: en_US.UTF-8
+        state: present
+
+- name: set the default locale via /etc/default/locale
+  copy:
+    dest: /etc/default/locale
+    content: |
+      LANG="en_US.UTF-8"
+      LANGUAGE="en_US:en"

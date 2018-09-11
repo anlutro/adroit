@@ -1,0 +1,21 @@
+# python
+__pycache__
+*.pyc
+/pip-selfcheck.json
+*.egg-info
+.eggs
+/dist
+/pyproject.lock
+
+# pytest
+/.pytest_cache
+/.cache
+/.coverage
+
+# virtualenv
+/.venv
+/.virtualenv
+/include
+/lib
+/lib64
+/share
