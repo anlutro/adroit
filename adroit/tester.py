@@ -63,6 +63,7 @@ class AnsibleRoleTester:
 
         groups = ["docker", self.base_name]
         if role:
+            groups.append("%s-%s" % (self.base_name, role))
             groups.append(self.get_docker_name(role))
         for group in groups:
             inventory_str += "[%s:children]\nlocal\n" % group

@@ -22,7 +22,7 @@ jobs:
         - poetry install
       script:
         - pylint adroit
-        # - pytest
+        - pytest
     - <<: *code-test
       name: py3.5 - lint + tests
       python: 3.5
