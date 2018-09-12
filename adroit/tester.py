@@ -97,7 +97,7 @@ class AnsibleRoleTester:
         return template.format(
             image=image,
             hosts=self.get_inventory().replace("\n", "\\n"),
-            apply_role_playbook="[{ hosts: localhost, roles: ['{{ adroit_role }}'] }]",
+            apply_role_playbook='[{ hosts: localhost, roles: ["{{ adroit_role }}"] }]',
         )
 
     def build_core_image(self, pull=False, image=None):
