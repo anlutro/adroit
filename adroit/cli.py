@@ -24,36 +24,6 @@ def get_apply_role_playbook():
     return '[{ hosts: localhost, roles: ["{{ role }}"] }]'
 
 
-def run_test_role_playbook(role, container, check_idempotency=False):
-    """ Run playbooks + tests for a role in a running container. """
-    cmd = [
-        "docker",
-        "exec",
-        "-t",
-        container,
-        "ansible-playbook",
-        "/etc/ansible/apply-role.yml",
-        "-e",
-        "role=%s" % role,
-    ]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    changes = 0
-    for line in proc.stdout:
-        sys.stdout.buffer.write(line)
-        sys.stdout.buffer.flush()
-        match = re.search(rb"change[sd]=(\d+)", line)
-        if match:
-            changes = int(match.group(1))
-    proc.wait()
-    if proc.returncode != 0:
-        print(get_fail_msg(container))
-        sys.exit(1)
-    if check_idempotency and changes > 0:
-        print("Expected no changes, but found changes=%d in output!" % changes)
-        print(get_container_paused_msg(container))
-        sys.exit(1)
-
-
 class TestFailure(Exception):
     @classmethod
     def from_container_id(cls, container=None):
@@ -61,33 +31,32 @@ class TestFailure(Exception):
 
 
 class AnsibleRoleTester:
-    def __init__(self, root_dir, base_name, default_image, env_var):
+    def __init__(self, root_dir, base_name, default_image, extra_vars=None):
         self.root_dir = root_dir
         self.roles_dir = os.path.join(self.root_dir, "roles")
         self.base_name = base_name
         self.default_image = default_image
-        self.env_var = env_var
+        self.extra_vars = extra_vars or {}
 
     def check_role_exists(self, role):
+        """ Ensure that a role exists. """
         role_path = os.path.join(self.roles_dir, role)
         if not os.path.isdir(role_path):
             print("Could not find ansible role directory at %r" % role_path)
             sys.exit(1)
 
-    def get_docker_name(self, role):
+    def get_docker_name(self, role, image=None):
         """ Given a role, get the itended docker image/container name. """
-        return "%s-%s" % (self.base_name, role)
+        image, _, tag = (image or self.default_image).partition(":")
+        parts = [self.base_name, image]
+        if tag:
+            parts.append(tag)
+        parts.append(role)
+        return "-".join(parts)
 
     def get_inventory(self, role=None):
         """ Get /etc/ansible/hosts contents for a role. """
-        ansible_vars = {
-            "ansible_connection": "local",
-            "docker": "true",
-            self.env_var: "docker",
-        }
-        inventory_str = "[local]\nlocalhost %s\n" % " ".join(
-            "=".join(kv) for kv in sorted(ansible_vars.items())
-        )
+        inventory_str = "[local]\nlocalhost ansible_connection=local\n"
 
         groups = ["docker", self.base_name]
         if role:
@@ -97,6 +66,7 @@ class AnsibleRoleTester:
         return inventory_str
 
     def build_dockerfile(self, dockerfile, tag):
+        """ Build a docker container from a Dockerfile string. """
         subprocess.run(
             ["docker", "build", "--tag", tag, "--file=-", self.root_dir],
             input=dockerfile.encode("ascii"),
@@ -104,7 +74,7 @@ class AnsibleRoleTester:
         )
 
     def get_core_dockerfile(self, image):
-        """ Get a string representation of a Dockerfile for a role. """
+        """ Get the core Dockerfile for an image as a string. """
         distro, _, version = image.partition(":")
         if not version:
             version = "latest"
@@ -125,11 +95,12 @@ class AnsibleRoleTester:
         """ Build the core image. """
         image = image or self.default_image
         if pull:
-            subprocess.run(["docker", "pull", image])
+            subprocess.run(["docker", "pull", image], check=True)
         dockerfile = self.get_core_dockerfile(image)
         self.build_dockerfile(dockerfile, self.get_docker_name("core"))
 
     def get_base_dockerfile(self):
+        """ Get the Dockerfile for the base image. """
         dockerfile_path = os.path.join(
             os.path.dirname(__file__), "docker", "dockerfile-base.tmpl"
         )
@@ -140,16 +111,14 @@ class AnsibleRoleTester:
     def build_base_image(self):
         """ Build the base image, which is the core image + the base role. """
         container = self.start_container("base", self.get_docker_name("core"))
-        run_test_role_playbook("base", container, check_idempotency=False)
-        subprocess.run(["docker", "commit", container, self.get_docker_name("base")])
-        subprocess.run(["docker", "rm", "-f", container])
+        self.run_test_role_playbook("base", container, check_idempotency=False)
+        subprocess.run(
+            ["docker", "commit", container, self.get_docker_name("base")], check=True
+        )
+        subprocess.run(["docker", "rm", "-f", container], check=True)
 
     def start_container(self, role, image):
         """ Start a container for a role. """
-        inventory_path = "/tmp/inventory-%s" % role
-        with open(inventory_path, "w+") as fh:
-            fh.write(self.get_inventory(role))
-
         docker_run_args = [
             "--detach",
             # we don't like this, but it's needed for systemd
@@ -161,7 +130,6 @@ class AnsibleRoleTester:
             "--env",
             "PYTHONUNBUFFERED=1",
             "--volume=%s:/etc/ansible/roles:ro" % self.roles_dir,
-            "--volume=%s:/etc/ansible/hosts:ro" % inventory_path,
         ]
         cmd = ["/lib/systemd/systemd"]
         res = subprocess.run(
@@ -175,17 +143,31 @@ class AnsibleRoleTester:
         # cleaned up. the calling function won't be able to as the container
         # variable containing the ID never gets returned
         try:
-            test_vars_path = "/etc/ansible/roles/%s/testing/test_vars.yml" % role
-            ln_test_vars = (
-                "if [ -e {test_vars_path} ]; then "
-                "ln -sf {test_vars_path} /etc/ansible/group_vars/all/; fi"
-            ).format(test_vars_path=test_vars_path)
-            subprocess.run(["docker", "exec", container, "sh", "-c", ln_test_vars])
+            self._prepare_container(container, role)
         except:
-            subprocess.run(["docker", "rm", "-f", container])
+            subprocess.run(["docker", "rm", "-f", container], check=True)
             raise
 
         return container
+
+    def _prepare_container(self, container, role):
+        inventory_path = "/tmp/inventory-%s" % role
+        with open(inventory_path, "w+") as fh:
+            fh.write(self.get_inventory(role))
+        subprocess.run(
+            ["docker", "cp", inventory_path, "%s:/etc/ansible/hosts" % container],
+            check=True,
+        )
+        os.unlink(inventory_path)
+
+        test_vars_path = "/etc/ansible/roles/%s/testing/test_vars.yml" % role
+        ln_test_vars = (
+            "if [ -e {test_vars_path} ]; then "
+            "ln -sf {test_vars_path} /etc/ansible/group_vars/all/; fi"
+        ).format(test_vars_path=test_vars_path)
+        subprocess.run(
+            ["docker", "exec", container, "sh", "-c", ln_test_vars], check=True
+        )
 
     def test_role(self, role):
         """ Start a container and test a role in it. """
@@ -196,15 +178,46 @@ class AnsibleRoleTester:
 
             # for the base image, this step has already been ran
             if role != "base":
-                run_test_role_playbook(role, container, check_idempotency=False)
+                self.run_test_role_playbook(role, container, check_idempotency=False)
 
-            run_test_role_playbook(role, container, check_idempotency=True)
+            self.run_test_role_playbook(role, container, check_idempotency=True)
 
-            subprocess.run(["docker", "rm", "-f", container])
+            subprocess.run(["docker", "rm", "-f", container], check=True)
         except Exception as exc:
             if container:
-                subprocess.run(["docker", "pause", container])
+                subprocess.run(["docker", "pause", container], check=True)
             raise TestFailure.from_container_id(container) from exc
+
+    def run_test_role_playbook(self, role, container, check_idempotency=False):
+        """ Run playbooks + tests for a role in a running container. """
+        cmd = [
+            "docker",
+            "exec",
+            "-t",
+            container,
+            "ansible-playbook",
+            "/etc/ansible/apply-role.yml",
+            "-e",
+            "role=%s" % role,
+        ]
+        for key, val in self.extra_vars.items():
+            cmd += ["-e", "%s=%s" % (key, val)]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        changes = 0
+        for line in proc.stdout:
+            sys.stdout.buffer.write(line)
+            sys.stdout.buffer.flush()
+            match = re.search(rb"change[sd]=(\d+)", line)
+            if match:
+                changes = int(match.group(1))
+        proc.wait()
+        if proc.returncode != 0:
+            print(get_fail_msg(container))
+            sys.exit(1)
+        if check_idempotency and changes > 0:
+            print("Expected no changes, but found changes=%d in output!" % changes)
+            print(get_container_paused_msg(container))
+            sys.exit(1)
 
 
 def parse_args(args=None):
@@ -223,10 +236,7 @@ def parse_args(args=None):
         help="The image to base docker containers on by default.",
     )
     parser.add_argument(
-        "-e",
-        "--env-var",
-        default="env",
-        help='An Ansible variable name that gets set to "docker".',
+        "-e", "--extra-vars", nargs="*", help="Extra variables to pass to Ansible."
     )
     parser.add_argument(
         "-r",
@@ -240,13 +250,19 @@ def parse_args(args=None):
         action="store_true",
         help="Skip building of the base image(s).",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.extra_vars = (
+        {k: v for k, v in (s.split("=", maxsplit=1) for s in args.extra_vars)}
+        if args.extra_vars
+        else {}
+    )
+    return args
 
 
 def main():
     args = parse_args()
     tester = AnsibleRoleTester(
-        args.root_dir, args.base_name, args.default_image, args.env_var
+        args.root_dir, args.base_name, args.default_image, extra_vars=args.extra_vars
     )
     tester.check_role_exists(args.role)
     if not args.skip_build_images:
