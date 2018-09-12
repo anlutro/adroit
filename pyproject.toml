@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "adroit"
-version = "0.2"
+version = "0.3"
 description = "Ansible Docker Role Testing"
 authors = ["Andreas Lutro <anlutro@gmail.com>"]
 readme = "README.md"
