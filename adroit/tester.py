@@ -18,11 +18,6 @@ def get_fail_msg(container=None):
     return msg
 
 
-def get_apply_role_playbook():
-    """ Get a string representation of a playbook that applies a role. """
-    return '[{ hosts: localhost, roles: ["{{ role }}"] }]'
-
-
 class TestException(Exception):
     pass
 
@@ -79,20 +74,26 @@ class AnsibleRoleTester:
 
     def get_core_dockerfile(self, image):
         """ Get the core Dockerfile for an image as a string. """
-        distro, _, version = image.partition(":")
-        if not version:
-            version = "latest"
+        distro = image.split(":")[0]
+
+        # we can use the same dockerfile for both of these
+        if distro == "ubuntu":
+            distro = "debian"
+
         dockerfile_path = os.path.join(
             os.path.dirname(__file__), "docker", "dockerfile-%s.tmpl" % distro
         )
+
         if not os.path.exists(dockerfile_path):
             raise ValueError("distro not supported: %s" % distro)
+
         with open(dockerfile_path) as fh:
             template = fh.read()
+
         return template.format(
-            version=version,
+            image=image,
             hosts=self.get_inventory().replace("\n", "\\n"),
-            apply_role_playbook=get_apply_role_playbook().replace("\n", "\\n"),
+            apply_role_playbook="[{ hosts: localhost, roles: ['{{ adroit_role }}'] }]",
         )
 
     def build_core_image(self, pull=False, image=None):
@@ -202,7 +203,7 @@ class AnsibleRoleTester:
             "ansible-playbook",
             "/etc/ansible/apply-role.yml",
             "-e",
-            "role=%s" % role,
+            "adroit_role=%s" % role,
         ]
         for key, val in self.extra_vars.items():
             cmd += ["-e", "%s=%s" % (key, val)]
