@@ -1,5 +1,9 @@
 # `adroit` - Ansible Docker Role Testing
 
+[![Build Status](https://travis-ci.org/anlutro/adroit.svg?branch=master)](https://travis-ci.org/anlutro/adroit)
+[![Latest version on PyPI](https://img.shields.io/pypi/v/adroit.svg?maxAge=2592000)](https://pypi.org/project/adroit)
+[![Licence](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 Heavily opinionated tool for testing Ansible roles using Docker containers.
 
 ### Assumptions and limitations
