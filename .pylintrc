@@ -1,0 +1,7 @@
+[MASTER]
+good-names = fh, log
+disable = missing-docstring
+
+[REPORTS]
+reports = no
+output-format = colorized
