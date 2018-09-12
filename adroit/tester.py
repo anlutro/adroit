@@ -109,15 +109,6 @@ class AnsibleRoleTester:
         dockerfile = self.get_core_dockerfile(image)
         self.build_dockerfile(dockerfile, self.get_docker_name("core"))
 
-    def get_base_dockerfile(self):
-        """ Get the Dockerfile for the base image. """
-        dockerfile_path = os.path.join(
-            os.path.dirname(__file__), "docker", "dockerfile-base.tmpl"
-        )
-        with open(dockerfile_path) as fh:
-            template = fh.read()
-        return template.format(core_image=self.get_docker_name("core"))
-
     def build_base_image(self):
         """ Build the base image, which is the core image + the base role. """
         container = self.start_container("base", self.get_docker_name("core"))
