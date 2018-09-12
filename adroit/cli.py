@@ -43,7 +43,7 @@ def parse_args(args=None):
         if args.extra_vars
         else {}
     )
-    args.log_level = logging.getLevelName(args.log_level)
+    args.log_level = logging.getLevelName(args.log_level.upper())
     return args
 
 
