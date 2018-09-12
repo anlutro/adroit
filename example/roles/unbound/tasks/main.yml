@@ -1,0 +1,4 @@
+- name: ensure unbound is installed
+  package:
+    name: unbound
+    state: present
