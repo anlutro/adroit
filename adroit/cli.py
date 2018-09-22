@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("role")
+    parser.add_argument("role", nargs="*")
     parser.add_argument(
         "-b",
         "--base-name",
@@ -63,15 +63,22 @@ def main():
             args.default_image,
             extra_vars=args.extra_vars,
         )
-        tester.check_role_exists(args.role)
+
+        for role in args.role:
+            tester.check_role_exists(role)
+
         if not args.skip_build_images:
             tester.build_core_image()
             tester.build_base_image()
-        tester.test_role(args.role)
-    except TestException:
+
+        for role in args.role:
+            tester.test_role(role)
+    except TestException as exc:
+        print(exc)
         log.debug("exception while running tests", exc_info=True)
         sys.exit(1)
-    except TestFailure:
+    except TestFailure as exc:
+        print(exc)
         log.debug("tests failed", exc_info=True)
         sys.exit(2)
 
