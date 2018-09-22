@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("role", nargs="*")
+    parser.add_argument("role", nargs="+")
     parser.add_argument(
         "-b",
         "--base-name",
