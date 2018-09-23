@@ -50,7 +50,3 @@ Certain tasks simply cannot be ran inside a Docker container - for example, moun
 ```
 
 If you need certain variables to be set which aren't in `defaults` or `vars` but should be set during testing, you can create a file like `roles/myrole/testing/test_vars.yml` and it will be applied when testing that particular role.
-
-## License
-
-The contents of this repository is released under the [MIT license](http://opensource.org/licenses/MIT). See the LICENSE file included for details.
