@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/anlutro/adroit.svg?branch=master)](https://travis-ci.org/anlutro/adroit)
 [![Latest version on PyPI](https://img.shields.io/pypi/v/adroit.svg?maxAge=2592000)](https://pypi.org/project/adroit)
-[![Licence](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+![License](https://img.shields.io/github/license/anlutro/adroit.svg)
 
 Heavily opinionated tool for testing Ansible roles using Docker containers.
 
