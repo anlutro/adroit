@@ -4,7 +4,7 @@ version = "0.3"
 description = "Ansible Docker Role Testing"
 authors = ["Andreas Lutro <anlutro@gmail.com>"]
 readme = "README.md"
-license = "GPLv3"
+license = "GPL-3.0"
 
 [tool.poetry.dependencies]
 python = "^3.5"
