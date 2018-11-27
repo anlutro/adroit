@@ -21,8 +21,6 @@ def get_fail_msg(container=None):
 class TestException(Exception):
     """ An unexpected error occured while running or setting up tests. """
 
-    pass
-
 
 class TestFailure(Exception):
     """ Tests ran as expected, but either Ansible or idempotency checks failed. """
