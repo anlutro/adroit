@@ -15,7 +15,6 @@ def test_get_docker_name(tester):
 def test_get_inventory(tester):
     assert "[docker:children]\nlocal" in tester.get_inventory()
     assert "[adroit:children]\nlocal" in tester.get_inventory()
-    assert "[adroit-role:children]\nlocal" in tester.get_inventory("role")
-    assert "[adroit-debian-stretch-role:children]\nlocal" in tester.get_inventory(
-        "role"
-    )
+    role_inv = tester.get_inventory("role")
+    assert "[adroit-role:children]\nlocal" in role_inv
+    assert "[adroit-debian-stretch-role:children]\nlocal" in role_inv
