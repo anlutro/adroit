@@ -3,6 +3,8 @@ import os
 import sys
 import logging
 
+from .tester import AnsibleRoleTester, TestException, TestFailure
+
 log = logging.getLogger(__name__)
 
 
@@ -43,7 +45,6 @@ def parse_args(args=None):
         if args.extra_vars
         else {}
     )
-    args.log_level = logging.getLevelName(args.log_level.upper())
     return args
 
 
@@ -51,10 +52,8 @@ def main():
     args = parse_args()
     logging.basicConfig(
         format="%(asctime)s [%(levelname)8s] [%(name)s] %(message)s",
-        level=args.log_level,
+        level=logging.getLevelName(args.log_level.upper()),
     )
-
-    from .tester import AnsibleRoleTester, TestException, TestFailure
 
     try:
         tester = AnsibleRoleTester(
@@ -74,12 +73,10 @@ def main():
         for role in args.role:
             tester.test_role(role)
     except TestException as exc:
-        print(exc)
-        log.debug("exception while running tests", exc_info=True)
+        log.exception("exception while running tests")
         sys.exit(1)
     except TestFailure as exc:
-        print(exc)
-        log.debug("tests failed", exc_info=True)
+        log.exception("tests failed")
         sys.exit(2)
 
 
