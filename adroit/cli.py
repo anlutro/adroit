@@ -72,10 +72,10 @@ def main():
 
         for role in args.role:
             tester.test_role(role)
-    except TestException as exc:
+    except TestException:
         log.exception("exception while running tests")
         sys.exit(1)
-    except TestFailure as exc:
+    except TestFailure:
         log.exception("tests failed")
         sys.exit(2)
 
