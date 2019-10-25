@@ -41,7 +41,7 @@ def parse_args(args=None):
     )
     args = parser.parse_args()
     args.extra_vars = (
-        {k: v for k, v in (s.split("=", maxsplit=1) for s in args.extra_vars)}
+        dict(s.split("=", maxsplit=1) for s in args.extra_vars))
         if args.extra_vars
         else {}
     )
