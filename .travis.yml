@@ -19,7 +19,7 @@ jobs:
       language: python
       install:
         - pip install poetry
-        - poetry develop
+        - poetry install
       script:
         - pylint adroit
         - pytest
