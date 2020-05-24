@@ -1,41 +1,31 @@
 branches:
   - master
-  - develop
 
+dist: xenial
+sudo: false
+language: python
 cache:
   pip: true
+
+python:
+  - '3.8'
+  - '3.7'
+  - '3.6'
+  - '3.5'
+install: pip install -e . --upgrade pytest
+script: pytest
 
 jobs:
   include:
     - name: black
-      language: python
-      python: 3.6
-      install: pip install black
-      script: black --check adroit tests
+      install: pip install --upgrade black
+      script: black --check .
 
-    - &code-test
-      name: py3.5 - lint + tests
-      python: 3.5
-      language: python
-      install:
-        - pip install poetry
-        - poetry install
-      script:
-        - pylint adroit
-        - pytest
-    - <<: *code-test
-      name: py3.6 - lint + tests
-      python: 3.6
-    - <<: *code-test
-      name: py3.7 - lint + tests
-      python: 3.7
-      dist: xenial
+    - name: pylint
+      install: pip install -e . --upgrade pylint
+      script: pylint -E adroit
 
     - name: example
-      language: python
-      python: 3.6
       services: [ docker ]
-      install:
-        - pip install poetry
-        - poetry install
+      install: pip install -e . --upgrade ansible
       script: ./example/run.sh
