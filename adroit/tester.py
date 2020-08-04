@@ -32,7 +32,7 @@ class TestFailure(Exception):
 
 class AnsibleRoleTester:
     def __init__(self, root_dir, base_name, default_image, extra_vars=None):
-        self.root_dir = str(root_dir)
+        self.root_dir = os.path.abspath(str(root_dir))
         self.roles_dir = os.path.join(self.root_dir, "roles")
         self.base_name = base_name
         self.default_image = default_image
